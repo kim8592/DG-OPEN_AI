@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gán Nhãn Hình Ảnh - Cloud</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary: #6200ee; --success: #28a745; --danger: #dc3545; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 10px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        
+        /* Menu & Admin */
+        input, button, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { cursor: pointer; border: none; font-weight: bold; transition: 0.3s; }
+        .btn-purple { background: var(--primary); color: white; }
+        .btn-green { background: var(--success); color: white; }
+        .set-item { padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid var(--primary); }
+
+        /* Vùng chứa nhãn tên để kéo */
+        .bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 20px; background: #f0e6ff; border: 2px dashed var(--primary); border-radius: 15px; margin-bottom: 20px; min-height: 50px; }
+        .drag-label { padding: 10px 20px; background: var(--primary); color: white; border-radius: 8px; cursor: grab; font-weight: bold; box-shadow: 0 4px 0 #3700b3; }
+        
+        /* Lưới hiển thị hình ảnh */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .card { background: white; border: 1px solid #eee; padding: 10px; border-radius: 15px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .card img { width: 100%; height: 120px; object-fit: contain; border-radius: 10px; background: #fff; }
+        
+        /* Ô thả nhãn */
+        .slot { min-height: 45px; margin-top: 10px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #fafafa; color: #666; transition: 0.3s; }
+        .slot.correct { background: var(--success) !important; color: white; border-style: solid; border-color: #1e7e34; }
+        
+        /* Hiệu ứng sai */
+        .shake { animation: shake 0.5s; background: #ffebee !important; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+
+        #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; z-index: 100; }
+        #modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 20px; display: none; z-index: 101; text-align: center; width: 85%; max-width: 350px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main-menu">
+    <h2 style="text-align:center; color:var(--primary)">🖼️ GÁN NHÃN HÌNH ẢNH</h2>
+    <div id="status" style="text-align:center; font-weight:bold; margin-bottom:15px; font-size: 0.9rem;">Đang kết nối Cloud...</div>
+    <div id="set-list">Đang tải...</div>
+    <hr>
+    <button class="btn-purple" onclick="showAdmin()">➕ TẠO BÀI TẬP MỚI</button>
+</div>
+
+<div class="container hidden" id="admin-view">
+    <button onclick="showMenu()" style="width: auto; background: #6c757d; color: white;">⬅ Quay lại</button>
+    <h3>Thiết lập gán nhãn</h3>
+    <input type="text" id="set-name" placeholder="Tên bộ (VD: Động vật quanh ta)">
+    
+    <div style="background: #f1f3f4; padding: 15px; border-radius: 15px;">
+        <label><b>1. Chọn nhiều ảnh cùng lúc:</b></label>
+        <input type="file" id="f-multi" multiple accept="image/*">
+        
+        <label><b>2. Nhập tên tương ứng (ngăn cách bằng dấu phẩy):</b></label>
+        <input type="text" id="t-multi" placeholder="VD: Con chó, Con mèo, Con gà">
+        <p style="font-size: 12px; color: red;">* Lưu ý: Số lượng tên phải bằng số lượng ảnh bạn chọn.</p>
+        
+        <button class="btn-purple" onclick="addQuestion()">➕ THÊM VÀO BỘ BÀI TẬP</button>
+    </div>
+    
+    <div id="temp-info" style="text-align:center; margin:10px; color:orange; font-weight:bold;"></div>
+    <button class="btn-green" id="btn-save" onclick="saveToCloud()">💾 LƯU LÊN CLOUD</button>
+</div>
+
+<div class="container hidden" id="game-view">
+    <div id="game-info" style="text-align:center; font-weight:bold; margin-bottom:15px; color:var(--primary);"></div>
+    <div class="bank" id="bank"></div>
+    <div class="grid" id="grid"></div>
+    <button onclick="location.reload()" style="background:#6c757d; color:white; margin-top:20px;">🏠 Quay về Menu</button>
+</div>
+
+<div id="overlay"></div>
+<div id="modal">
+    <h2 id="m-title"></h2>
+    <p id="m-text"></p>
+    <div id="m-foot"></div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCWwXbgWOZTifn-pRM57HZ2RiqHjWZ6DgE",
+        authDomain: "gamekeotha.firebaseapp.com",
+        databaseURL: "https://gamekeotha-default-rtdb.firebaseio.com",
+        projectId: "gamekeotha",
+        storageBucket: "gamekeotha.firebasestorage.app",
+        messagingSenderId: "294617757747",
+        appId: "1:294617757747:web:b1592f8fb6743ea3f88b46"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let allSets = {}; let tempQuestions = []; let currentQuestions = []; let currentIdx = 0;
+
+    db.ref(".info/connected").on("value", (snap) => {
+        const s = document.getElementById('status');
+        s.innerText = snap.val() ? "✅ CLOUD SẴN SÀNG" : "❌ MẤT KẾT NỐI";
+        s.style.color = snap.val() ? "green" : "red";
+    });
+
+    db.ref('matching_sets').on('value', (snap) => {
+        allSets = snap.val() || {};
+        renderList();
+    });
+
+    function renderList() {
+        const list = document.getElementById('set-list'); list.innerHTML = "";
+        for (let key in allSets) {
+            const div = document.createElement('div'); div.className = 'set-item';
+            div.innerHTML = `<span>📂 <b>${allSets[key].name}</b></span>
+                             <div style="display:flex; gap:8px;">
+                                <button onclick="playGame('${key}')" style="background:var(--success); color:white; width:65px; padding:8px;">CHƠI</button>
+                                <button onclick="deleteSet('${key}')" style="background:var(--danger); color:white; width:50px; padding:8px;">Xóa</button>
+                             </div>`;
+            list.appendChild(div);
+        }
+    }
+
+    const to64 = f => new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(f); });
+
+    async function addQuestion() {
+        const fs = document.getElementById('f-multi').files;
+        const ns = document.getElementById('t-multi').value.split(',').map(s => s.trim()).filter(s => s);
+        if(!fs.length || fs.length !== ns.length) return alert("Số lượng ảnh và tên phải khớp nhau!");
+        
+        let items = [];
+        for (let i = 0; i < fs.length; i++) {
+            items.push({ img: await to64(fs[i]), name: ns[i] });
+        }
+        tempQuestions.push({ items });
+        document.getElementById('temp-info').innerText = `Đã thêm màn hình thứ ${tempQuestions.length}`;
+        document.getElementById('f-multi').value = ""; document.getElementById('t-multi').value = "";
+    }
+
+    function saveToCloud() {
+        const name = document.getElementById('set-name').value;
+        if(!name || !tempQuestions.length) return alert("Nhập đủ thông tin!");
+        db.ref('matching_sets').push({ name, questions: tempQuestions }).then(() => {
+            tempQuestions = []; document.getElementById('temp-info').innerText = ""; showMenu();
+        });
+    }
+
+    function deleteSet(key) { if(confirm("Xóa bộ này?")) db.ref('matching_sets/' + key).remove(); }
+
+    function playGame(key) {
+        currentQuestions = allSets[key].questions; currentIdx = 0;
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('game-view').classList.remove('hidden');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hideModal();
+        const q = currentQuestions[currentIdx];
+        document.getElementById('game-info').innerText = `MÀN HÌNH ${currentIdx + 1} / ${currentQuestions.length}`;
+        const bank = document.getElementById('bank'); const grid = document.getElementById('grid');
+        bank.innerHTML = ""; grid.innerHTML = "";
+
+        // Trộn tên nhãn
+        let names = q.items.map(it => it.name).sort(() => Math.random() - 0.5);
+        names.forEach(n => {
+            const d = document.createElement('div'); d.className = 'drag-label'; d.innerText = n;
+            d.draggable = true; d.ondragstart = (e) => e.dataTransfer.setData("text", n);
+            bank.appendChild(d);
+        });
+
+        // Tạo lưới hình ảnh
+        q.items.forEach(it => {
+            const card = document.createElement('div'); card.className = 'card';
+            card.innerHTML = `<img src="${it.img}"><div class="slot" data-ans="${it.name}">Kéo tên vào đây</div>`;
+            
+            const slot = card.querySelector('.slot');
+            slot.ondragover = (e) => e.preventDefault();
+            slot.ondrop = (e) => {
+                const val = e.dataTransfer.getData("text");
+                if(val === it.name) {
+                    slot.classList.add('correct'); slot.innerText = "✅ " + val;
+                    checkWin();
+                } else {
+                    slot.classList.add('shake'); setTimeout(() => slot.classList.remove('shake'), 1000);
+                    showResult(false);
+                }
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    function checkWin() {
+        const all = document.querySelectorAll('.slot');
+        const done = document.querySelectorAll('.slot.correct');
+        if(all.length === done.length) showResult(true);
+    }
+
+    function showResult(win) {
+        if(!win) {
+            const m = document.getElementById('modal'); const o = document.getElementById('overlay');
+            document.getElementById('m-title').innerText = "SAI RỒI! ❌";
+            document.getElementById('m-title').style.color = "red";
+            document.getElementById('m-text').innerText = "Nhầm rồi, kéo lại nhé!";
+            document.getElementById('m-foot').innerHTML = "";
+            m.style.display = o.style.display = 'block';
+            setTimeout(hideModal, 1000); return;
+        }
+        const isEnd = (currentIdx === currentQuestions.length - 1);
+        const m = document.getElementById('modal'); const o = document.getElementById('overlay');
+        document.getElementById('m-title').innerText = isEnd ? "HOÀN THÀNH! 🏆" : "CHÍNH XÁC! 🎉";
+        document.getElementById('m-title').style.color = "green";
+        document.getElementById('m-text').innerText = isEnd ? "Bạn thật tuyệt vời!" : "Hãy sang thử thách tiếp theo.";
+        document.getElementById('m-foot').innerHTML = `<button onclick="${isEnd ? 'location.reload()' : 'nextQ()'}" class="btn-green">${isEnd ? 'KẾT THÚC' : 'TIẾP THEO'}</button>`;
+        m.style.display = o.style.display = 'block';
+    }
+
+    function nextQ() { currentIdx++; loadQuestion(); }
+    function hideModal() { document.getElementById('overlay').style.display = 'none'; document.getElementById('modal').style.display = 'none'; }
+    function showAdmin() { document.getElementById('main-menu').classList.add('hidden'); document.getElementById('admin-view').classList.remove('hidden'); }
+    function showMenu() { document.getElementById('admin-view').classList.add('hidden'); document.getElementById('main-menu').classList.remove('hidden'); }
+</script>
+</body>
+</html>
