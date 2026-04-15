@@ -626,7 +626,7 @@ const batch = db.batch();
             } finally { setIsSaving(false); }
           };
 
-         const runAI = async () => {
+        const runAI = async () => {
   if (!isAuthValid) return;
   if (!apiKey) {
     setShowApiKeyModal(true);
@@ -640,10 +640,8 @@ const batch = db.batch();
     const draft = draftData[s.id] || {};
     const comment = draft.comment !== undefined ? draft.comment : (d.comment || "");
     if (comment) return false;
-    if (viewMode === 'subject') {
-      const lv = draft.level !== undefined ? draft.level : (d.level || "");
-      return !!lv;
-    } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
+
+    if (viewMode === 'subject' || (systemMode === 'vnedu' && viewMode !== 'subject')) {
       const lv = draft.level !== undefined ? draft.level : (d.level || "");
       return !!lv;
     } else if (systemMode === 'smas' && viewMode !== 'subject') {
@@ -662,19 +660,20 @@ const batch = db.batch();
   }
 
   setIsGenerating(true);
-  showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh (nhóm 3 em)...`, 'info', '⏳', 2000);
+  showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh...`, 'info', '⏳', 2000);
 
-  const BATCH_SIZE = 3; // Số lượng "vàng" để văn phong hay nhất
+  const BATCH_SIZE = 3; // Giữ mức 3 em để văn phong hay nhất
   let successCount = 0;
 
   for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
     const batch = allTargets.slice(i, i + BATCH_SIZE);
     
-    // Chuẩn bị dữ liệu cho 3 em
+    // Thu thập dữ liệu ngữ cảnh cho nhóm 3 em
     const studentContexts = batch.map(stu => {
       const d = studentData[stu.id] || {};
       const draft = draftData[stu.id] || {};
       let info = "";
+      
       if (viewMode === 'subject') {
         const subName = subjects.find(s => s.id === selectedSubId)?.name;
         const lv = draft.level !== undefined ? draft.level : (d.level || "");
@@ -690,16 +689,21 @@ const batch = db.batch();
           const lv = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
           return lv ? `${c.name} mức ${lv}` : null;
         }).filter(Boolean).join('; ');
-        info = `Đánh giá: ${details}`;
+        info = `Đánh giá tổng hợp: ${details}`;
       }
       return { studentId: stu.id, studentName: stu.name, context: info, note: draft.note || d.note || "" };
     });
 
-    // Ép AI đổi giọng liên tục để không bị đuối
-    const moods = ["khích lệ", "thực tế", "nhẹ nhàng", "sinh động"];
-    const currentMood = moods[Math.floor(Math.random() * moods.length)];
+    // SỬ DỤNG ĐÚNG CÁC BIẾN TỪ WEB CỦA BẠN (systemPrompt và aiPrompt)
+    const currentInstruction = `Ghi chú riêng của giáo viên:
+${aiPrompt}
 
-    const userInstruction = `Giọng điệu: ${currentMood}. Ghi chú: ${aiPrompt}. Danh sách ${studentContexts.length} em: ${JSON.stringify(studentContexts)}`;
+Số học sinh cần nhận xét đợt này: ${studentContexts.length}
+
+Danh sách học sinh:
+${JSON.stringify(studentContexts)}
+
+Hãy viết nhận xét cho từng học sinh theo đúng ID và trả về đúng ${studentContexts.length} nhận xét.`;
 
     try {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -711,11 +715,11 @@ const batch = db.batch();
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [
-            { role: "system", content: systemPrompt }, // Biến systemPrompt lấy từ bên ngoài hàm này
-            { role: "user", content: userInstruction }
+            { role: "system", content: systemPrompt }, // Biến này lấy từ ô nhập liệu trên Web của bạn
+            { role: "user", content: currentInstruction }
           ],
           temperature: 1.0,
-          presence_penalty: 0.8 // Ép AI dùng từ mới mạnh mẽ
+          presence_penalty: 0.8
         })
       });
 
@@ -737,20 +741,20 @@ const batch = db.batch();
         successCount += Object.keys(results).length;
       }
 
-      // NGHỈ GIỮA CÁC LẦN GỌI - Để "reset" bộ não AI và tránh lỗi 503
+      // Nghỉ 2.5 giây giữa các đợt để reset AI và tránh 503
       if (i + BATCH_SIZE < allTargets.length) {
-        await new Promise(r => setTimeout(r, 2500)); // Nghỉ 2.5 giây
+        await new Promise(r => setTimeout(r, 2500));
       }
 
     } catch (e) {
       console.error(e);
-      showToast('Lỗi đợt này, đang thử lại nhóm tiếp theo...', 'error', '❌', 3000);
-      await new Promise(r => setTimeout(r, 5000)); // Lỗi thì nghỉ lâu hơn
+      showToast('Lỗi đợt này, đang bỏ qua nhóm tiếp theo...', 'error', '❌', 3000);
+      await new Promise(r => setTimeout(r, 4000));
     }
   }
 
   setIsGenerating(false);
-  showToast(`Xong! Đã tạo ${successCount}/${allTargets.length} nhận xét.`, 'success', '✅', 3000);
+  showToast(`Hoàn thành tạo ${successCount}/${allTargets.length} nhận xét!`, 'success', '✅', 3000);
 };
 
           const handleSendZalo = (studentId) => {
