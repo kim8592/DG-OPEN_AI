@@ -626,216 +626,132 @@ const batch = db.batch();
             } finally { setIsSaving(false); }
           };
 
-          const runAI = async () => {
-            if (!isAuthValid) return;
-            if (!apiKey) {
-              setShowApiKeyModal(true);
-              showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
-              return;
-            }
-
-            const allTargets = students.filter(s => {
-              if (s.status !== 'active') return false;
-              const d = studentData[s.id] || {};
-              const draft = draftData[s.id] || {};
-              const comment = draft.comment !== undefined ? draft.comment : (d.comment || "");
-              
-              if (comment) return false;
-
-              if (viewMode === 'subject') {
-                const level = draft.level !== undefined ? draft.level : (d.level || "");
-                return !!level;
-              } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
-                const level = draft.level !== undefined ? draft.level : (d.level || "");
-                return !!level;
-              } else if (systemMode === 'smas' && viewMode !== 'subject') {
-                const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
-                return list.some(c => {
-                  const level = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
-                  return !!level;
-                });
-              }
-
-              return false;
-            });
-
-            if (!allTargets.length) { 
-              showToast('Không có học sinh nào cần nhận xét (chưa được chọn mức đạt hoặc đã có nhận xét)', 'info', '⚠️', 4000);
-              return; 
-            }
-
-            setIsGenerating(true);
-            showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh...`, 'info', '⏳', 2000);
-            
-            const BATCH_SIZE = 5;
-            let successCount = 0;
-            for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
-              const batch = allTargets.slice(i, i + BATCH_SIZE);
-              const studentContexts = batch.map(stu => {
-                const d = studentData[stu.id] || {};
-                const draft = draftData[stu.id] || {};
-                let info = "";
-                
-                if (viewMode === 'subject') {
-                  const subName = subjects.find(s=>s.id===selectedSubId)?.name;
-                  const lv = draft.level !== undefined ? draft.level : (d.level || "");
-                  info = `Môn: ${subName}, Mức: ${lv}`;
-                } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
-                  const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
-                  const criteriaName = list.find(c => c.id === selectedCriteriaId)?.name;
-                  const lv = draft.level !== undefined ? draft.level : (d.level || "");
-                  info = `Tiêu chí: ${criteriaName}, Mức: ${lv}`;
-                } else {
-                  const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
-                  const details = list.map(c => {
-                    const lv = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
-                    return lv ? `${c.name} đạt mức ${lv}` : null;
-                  }).filter(Boolean).join('; ');
-                  info = `Đánh giá tổng hợp: ${details}`;
-                }
-                return { studentId: stu.id, studentName: stu.name, context: info, note: draft.note || d.note || "" };
-              });
-              
-              const systemPrompt = `
-Bạn là giáo viên Tiểu học tại Việt Nam, có kinh nghiệm nhận xét học sinh theo Thông tư 27.
-
-Hãy viết nhận xét học sinh theo định dạng JSON.
-
-QUAN TRỌNG:
-- Chỉ sử dụng 100% tiếng Việt.
-- Tuyệt đối không sử dụng từ ngữ của bất kỳ ngôn ngữ nào khác.
-- Nếu có từ không chắc chắn, hãy dùng từ tiếng Việt đơn giản thay thế.
-
-QUY TẮC CHUNG:
-- Ngôn ngữ: Tiếng Việt tự nhiên, gần gũi, mang tính động viên, giống lời giáo viên thật.
-- Mỗi học sinh phải có cách diễn đạt khác nhau, tránh lặp cấu trúc câu.
-- Bắt đầu bằng "Em".
-- Tuyệt đối không dùng từ "cô", "thầy" trong câu nhận xét.
-- Không nhắc lại tên học sinh.
-- Không lặp lại tên môn học hoặc tên tiêu chí trong câu.
-
-NỘI DUNG NHẬN XÉT:
-- Nhận xét phải dựa sát vào dữ liệu (mức đánh giá).
-- Viết tự nhiên như lời nói, không máy móc.
-
-QUY TẮC THEO MỨC:
-- Mức T (Tốt):
-  + Khen rõ điểm nổi bật.
-- Mức Đ / H (Đạt / Hoàn thành):
-  + Khen điểm đã làm được.
-  + Đưa ra hướng phát huy
-- Mức C (Chưa đạt):
-  + Khen nhẹ 1 điểm (ví dụ: có cố gắng).
-  + Nêu hạn chế cụ thể (không nói chung chung).
-  + Đưa ra hướng cải thiện rõ ràng, dễ thực hiện.
-
-PHONG CÁCH:
-- Ưu tiên câu ngắn, rõ ý.
-- Tránh lặp từ giữa các học sinh.
-- Giống nhận xét viết tay của giáo viên.
-
-QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
-- Mỗi nhận xét phải KHÁC NHAU hoàn toàn về cách diễn đạt.
-- Không được sử dụng lại cùng một cấu trúc câu cho nhiều học sinh.
-- Phải thay đổi:
-  + cách mở đầu sau từ "Em"
-  + từ ngữ khen (không lặp lại "chăm chỉ", "cố gắng" nhiều lần)
-  + cách góp ý
-- Nếu nhiều học sinh có cùng mức đánh giá, vẫn phải viết khác nhau.
-- Sau khi viết xong toàn bộ, phải tự kiểm tra:
-  + Nếu có 2 câu giống hoặc gần giống nhau → viết lại cho khác.
-  + Đảm bảo không có từ nước ngoài.
-  + Đảm bảo đúng chính tả tiếng Việt.
-  + Nếu có lỗi, hãy tự sửa trước khi trả kết quả.
-- Không được dùng lại các mẫu như:
-  "Em chăm chỉ và có cố gắng"
-  "Em học tốt và cần phát huy"
-
-ĐỊNH DẠNG TRẢ VỀ:
-Trả về JSON dạng:
-{
-  "studentId1": "nhận xét...",
-  "studentId2": "nhận xét..."
-}
-
-Không giải thích thêm.
-`;
-
-              const userInstruction = `Ghi chú riêng của giáo viên:
-${aiPrompt}
-
-Số học sinh cần nhận xét: ${studentContexts.length}
-
-Danh sách học sinh:
-${JSON.stringify(studentContexts)}
-
-Hãy viết nhận xét cho từng học sinh theo đúng ID và trả về đúng ${studentContexts.length} nhận xét.`;
-
-              
-              try {
-                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${apiKey}`
-  },
-  body: JSON.stringify({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userInstruction }
-    ],
-    temperature: 0.9
-        
-  })
-});
-
-const result = await res.json();
-
-if (result.error) {
-  console.error("API error:", result.error.message);
-  showToast("Lỗi API: " + result.error.message, "error", "❌", 4000);
-  break;
-}
-
-let jsonText = result.choices?.[0]?.message?.content;
-
-                if (jsonText) {
-  let cleanText = jsonText.trim();
-
-  if (cleanText.startsWith("```")) {
-    cleanText = cleanText.replace(/```json|```/g, "").trim();
+         const runAI = async () => {
+  if (!isAuthValid) return;
+  if (!apiKey) {
+    setShowApiKeyModal(true);
+    showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
+    return;
   }
 
-  const results = JSON.parse(cleanText);
-
-                  const delay = (ms) => new Promise(res => setTimeout(res, ms));
-
-for (const sId of Object.keys(results)) {
-  const comment = results[sId];
-
-  setDraftData(prev => ({
-    ...prev,
-    [sId]: {
-      ...(prev[sId] || {}),
-      comment: comment
+  const allTargets = students.filter(s => {
+    if (s.status !== 'active') return false;
+    const d = studentData[s.id] || {};
+    const draft = draftData[s.id] || {};
+    const comment = draft.comment !== undefined ? draft.comment : (d.comment || "");
+    if (comment) return false;
+    if (viewMode === 'subject') {
+      const lv = draft.level !== undefined ? draft.level : (d.level || "");
+      return !!lv;
+    } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
+      const lv = draft.level !== undefined ? draft.level : (d.level || "");
+      return !!lv;
+    } else if (systemMode === 'smas' && viewMode !== 'subject') {
+      const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+      return list.some(c => {
+        const lv = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
+        return !!lv;
+      });
     }
-  }));
+    return false;
+  });
 
-  await delay(1000); // 👈 chỉnh tốc độ ở đây
-}
+  if (!allTargets.length) {
+    showToast('Không có học sinh nào cần nhận xét', 'info', '⚠️', 4000);
+    return;
+  }
 
-                  successCount += Object.keys(results).length;
-                }
-              } catch (e) { 
-                console.error(e); 
-                showToast('Lỗi kết nối: ' + e.message, 'error', '❌', 4000);
-                break;
-              }
-            }
-            setIsGenerating(false);
-            showToast(`Tạo nhận xét thành công cho ${successCount}/${allTargets.length} học sinh`, 'success', '✅', 3000);
-          };
+  setIsGenerating(true);
+  showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh (nhóm 3 em)...`, 'info', '⏳', 2000);
+
+  const BATCH_SIZE = 3; // Số lượng "vàng" để văn phong hay nhất
+  let successCount = 0;
+
+  for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
+    const batch = allTargets.slice(i, i + BATCH_SIZE);
+    
+    // Chuẩn bị dữ liệu cho 3 em
+    const studentContexts = batch.map(stu => {
+      const d = studentData[stu.id] || {};
+      const draft = draftData[stu.id] || {};
+      let info = "";
+      if (viewMode === 'subject') {
+        const subName = subjects.find(s => s.id === selectedSubId)?.name;
+        const lv = draft.level !== undefined ? draft.level : (d.level || "");
+        info = `Môn: ${subName}, Mức: ${lv}`;
+      } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
+        const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+        const criteriaName = list.find(c => c.id === selectedCriteriaId)?.name;
+        const lv = draft.level !== undefined ? draft.level : (d.level || "");
+        info = `Tiêu chí: ${criteriaName}, Mức: ${lv}`;
+      } else {
+        const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+        const details = list.map(c => {
+          const lv = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
+          return lv ? `${c.name} mức ${lv}` : null;
+        }).filter(Boolean).join('; ');
+        info = `Đánh giá: ${details}`;
+      }
+      return { studentId: stu.id, studentName: stu.name, context: info, note: draft.note || d.note || "" };
+    });
+
+    // Ép AI đổi giọng liên tục để không bị đuối
+    const moods = ["khích lệ", "thực tế", "nhẹ nhàng", "sinh động"];
+    const currentMood = moods[Math.floor(Math.random() * moods.length)];
+
+    const userInstruction = `Giọng điệu: ${currentMood}. Ghi chú: ${aiPrompt}. Danh sách ${studentContexts.length} em: ${JSON.stringify(studentContexts)}`;
+
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt }, // Biến systemPrompt lấy từ bên ngoài hàm này
+            { role: "user", content: userInstruction }
+          ],
+          temperature: 1.0,
+          presence_penalty: 0.8 // Ép AI dùng từ mới mạnh mẽ
+        })
+      });
+
+      const result = await res.json();
+      if (result.error) throw new Error(result.error.message);
+
+      let jsonText = result.choices?.[0]?.message?.content;
+      if (jsonText) {
+        let cleanText = jsonText.trim().replace(/```json|```/g, "").trim();
+        const results = JSON.parse(cleanText);
+
+        setDraftData(prev => {
+          const newData = { ...prev };
+          Object.keys(results).forEach(sId => {
+            newData[sId] = { ...(newData[sId] || {}), comment: results[sId] };
+          });
+          return newData;
+        });
+        successCount += Object.keys(results).length;
+      }
+
+      // NGHỈ GIỮA CÁC LẦN GỌI - Để "reset" bộ não AI và tránh lỗi 503
+      if (i + BATCH_SIZE < allTargets.length) {
+        await new Promise(r => setTimeout(r, 2500)); // Nghỉ 2.5 giây
+      }
+
+    } catch (e) {
+      console.error(e);
+      showToast('Lỗi đợt này, đang thử lại nhóm tiếp theo...', 'error', '❌', 3000);
+      await new Promise(r => setTimeout(r, 5000)); // Lỗi thì nghỉ lâu hơn
+    }
+  }
+
+  setIsGenerating(false);
+  showToast(`Xong! Đã tạo ${successCount}/${allTargets.length} nhận xét.`, 'success', '✅', 3000);
+};
 
           const handleSendZalo = (studentId) => {
             const d = studentData[studentId] || {};
