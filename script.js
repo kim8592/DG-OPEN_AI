@@ -709,7 +709,7 @@ QUY TẮC CHUNG:
 - Không nhắc lại tên học sinh.
 - Không lặp lại tên môn học hoặc tên tiêu chí trong câu.
 - Tuyệt đối không ghi lại mức đạt (T, H/Đ, C).
-- Bắt buộc dùng tiếng Việt 100%.
+- Tuyệt đối không chèn từ tiếng Anh, tiếng nước ngoài vào câu nhận xét.
 
 PHONG CÁCH:
 - Câu nhận xét ngắn gọn, đủ ý.
