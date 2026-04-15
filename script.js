@@ -666,7 +666,8 @@ const batch = db.batch();
 
           setIsGenerating(true);
             showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh...`, 'info', '⏳', 2000);
-            
+
+        const delay = (ms) => new Promise(res => setTimeout(res, ms)); // 👈 THÊM DÒNG NÀY Ở TRÊN
          const BATCH_SIZE = 5;
             let successCount = 0;
             for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
@@ -695,7 +696,15 @@ const batch = db.batch();
                 }
                 return { studentId: stu.id, studentName: stu.name, context: info, note: draft.note || d.note || "" };
               }); 
+// 👇👇👇 CHÈN NGAY DƯỚI ĐÂY
 
+  await callAI(studentContexts);
+
+  if (i + BATCH_SIZE < allTargets.length) {
+    await delay(1200);
+  }
+
+}
             
                const systemPrompt = `
 Bạn là giáo viên Tiểu học tại Việt Nam, có kinh nghiệm nhận xét học sinh theo Thông tư 27.
