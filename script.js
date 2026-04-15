@@ -627,12 +627,12 @@ const batch = db.batch();
           };
 
         const runAI = async () => {
-  if (!isAuthValid) return;
-  if (!apiKey) {
-    setShowApiKeyModal(true);
-    showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
-    return;
-  }
+            if (!isAuthValid) return;
+            if (!apiKey) {
+              setShowApiKeyModal(true);
+              showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
+              return;
+            }
 
   const allTargets = students.filter(s => {
     if (s.status !== 'active') return false;
