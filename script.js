@@ -626,86 +626,85 @@ const batch = db.batch();
             } finally { setIsSaving(false); }
           };
 
-                const delay = (ms) => new Promise(res => setTimeout(res, ms));
+          const runAI = async () => {
+            if (!isAuthValid) return;
+            if (!apiKey) {
+              setShowApiKeyModal(true);
+              showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
+              return;
+            }
 
-const runAI = async () => {
-  if (!isAuthValid) return;
+            const allTargets = students.filter(s => {
+              if (s.status !== 'active') return false;
+              const d = studentData[s.id] || {};
+              const draft = draftData[s.id] || {};
+              const comment = draft.comment !== undefined ? draft.comment : (d.comment || "");
+              
+              if (comment) return false;
 
-  if (!apiKey) {
-    setShowApiKeyModal(true);
-    showToast('Vui lòng cấu hình API Key trước', 'info', '⚙️', 3000);
-    return;
-  }
+              if (viewMode === 'subject') {
+                const level = draft.level !== undefined ? draft.level : (d.level || "");
+                return !!level;
+              } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
+                const level = draft.level !== undefined ? draft.level : (d.level || "");
+                return !!level;
+              } else if (systemMode === 'smas' && viewMode !== 'subject') {
+                const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+                return list.some(c => {
+                  const level = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
+                  return !!level;
+                });
+              }
 
-  const allTargets = students.filter(s => {
-    if (s.status !== 'active') return false;
+              return false;
+            });
 
-    const d = studentData[s.id] || {};
-    const draft = draftData[s.id] || {};
-    const comment = draft.comment !== undefined ? draft.comment : (d.comment || "");
+            if (!allTargets.length) { 
+              showToast('Không có học sinh nào cần nhận xét (chưa được chọn mức đạt hoặc đã có nhận xét)', 'info', '⚠️', 4000);
+              return; 
+            }
 
-    if (comment) return false;
-
-    const level = draft.level !== undefined ? draft.level : (d.level || "");
-    return !!level;
-  });
-
-  if (!allTargets.length) {
-    showToast('Không có học sinh cần nhận xét', 'info', '⚠️', 3000);
-    return;
-  }
-
-  setIsGenerating(true);
-  showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh...`, 'info', '⏳', 2000);
-
-  const BATCH_SIZE = 5;
-  let successCount = 0;
-
-  try {
-    for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
-
-      const batch = allTargets.slice(i, i + BATCH_SIZE);
-
-      const studentContexts = batch.map(stu => {
-        const d = studentData[stu.id] || {};
-        const draft = draftData[stu.id] || {};
-
-        return {
-          studentId: stu.id,
-          studentName: stu.name,
-          context: `Mức: ${draft.level || d.level || ""}`,
-          note: draft.note || d.note || ""
-        };
-      });
-
-      // 👉 GỌI AI
-      const res = await callAI(studentContexts);
-
-      if (res) {
-        successCount += batch.length;
-      }
-
-      // 👉 NGHỈ GIỮA CÁC LẦN GỌI
-      if (i + BATCH_SIZE < allTargets.length) {
-        await delay(1200); // nghỉ 1.2 giây
-      }
-    }
-
-    showToast(`✅ Hoàn thành ${successCount} học sinh`, 'success', '🎉', 3000);
-
-  } catch (error) {
-    console.error(error);
-    showToast('❌ Lỗi chạy AI', 'error', '❌', 3000);
-  }
-
-  setIsGenerating(false);
-};
-
+            setIsGenerating(true);
+            showToast(`Đang tạo nhận xét cho ${allTargets.length} học sinh...`, 'info', '⏳', 2000);
             
-               const systemPrompt = `
+            const BATCH_SIZE = 5;
+            let successCount = 0;
+            for (let i = 0; i < allTargets.length; i += BATCH_SIZE) {
+              const batch = allTargets.slice(i, i + BATCH_SIZE);
+              const studentContexts = batch.map(stu => {
+                const d = studentData[stu.id] || {};
+                const draft = draftData[stu.id] || {};
+                let info = "";
+                
+                if (viewMode === 'subject') {
+                  const subName = subjects.find(s=>s.id===selectedSubId)?.name;
+                  const lv = draft.level !== undefined ? draft.level : (d.level || "");
+                  info = `Môn: ${subName}, Mức: ${lv}`;
+                } else if (systemMode === 'vnedu' && viewMode !== 'subject') {
+                  const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+                  const criteriaName = list.find(c => c.id === selectedCriteriaId)?.name;
+                  const lv = draft.level !== undefined ? draft.level : (d.level || "");
+                  info = `Tiêu chí: ${criteriaName}, Mức: ${lv}`;
+                } else {
+                  const list = viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES);
+                  const details = list.map(c => {
+                    const lv = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
+                    return lv ? `${c.name} đạt mức ${lv}` : null;
+                  }).filter(Boolean).join('; ');
+                  info = `Đánh giá tổng hợp: ${details}`;
+                }
+                return { studentId: stu.id, studentName: stu.name, context: info, note: draft.note || d.note || "" };
+              });
+              
+              const systemPrompt = `
 Bạn là giáo viên Tiểu học tại Việt Nam, có kinh nghiệm nhận xét học sinh theo Thông tư 27.
 
 Hãy viết nhận xét học sinh theo định dạng JSON.
+
+QUAN TRỌNG:
+- Chỉ sử dụng 100% tiếng Việt.
+- Tuyệt đối không sử dụng từ ngữ của bất kỳ ngôn ngữ nào khác.
+- Nếu có từ không chắc chắn, hãy dùng từ tiếng Việt đơn giản thay thế.
 
 QUY TẮC CHUNG:
 - Ngôn ngữ: Tiếng Việt tự nhiên, gần gũi, mang tính động viên, giống lời giáo viên thật.
@@ -714,8 +713,26 @@ QUY TẮC CHUNG:
 - Tuyệt đối không dùng từ "cô", "thầy" trong câu nhận xét.
 - Không nhắc lại tên học sinh.
 - Không lặp lại tên môn học hoặc tên tiêu chí trong câu.
-- Tuyệt đối không ghi lại mức đạt (T, H/Đ, C).
-- Tuyệt đối không chèn từ tiếng Anh, tiếng nước ngoài vào câu nhận xét.
+
+NỘI DUNG NHẬN XÉT:
+- Nhận xét phải dựa sát vào dữ liệu (mức đánh giá).
+- Viết tự nhiên như lời nói, không máy móc.
+
+QUY TẮC THEO MỨC:
+- Mức T (Tốt):
+  + Khen rõ điểm nổi bật.
+- Mức Đ / H (Đạt / Hoàn thành):
+  + Khen điểm đã làm được.
+  + Đưa ra hướng phát huy
+- Mức C (Chưa đạt):
+  + Khen nhẹ 1 điểm (ví dụ: có cố gắng).
+  + Nêu hạn chế cụ thể (không nói chung chung).
+  + Đưa ra hướng cải thiện rõ ràng, dễ thực hiện.
+
+PHONG CÁCH:
+- Ưu tiên câu ngắn, rõ ý.
+- Tránh lặp từ giữa các học sinh.
+- Giống nhận xét viết tay của giáo viên.
 
 QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
 - Mỗi nhận xét phải KHÁC NHAU hoàn toàn về cách diễn đạt.
@@ -727,18 +744,12 @@ QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
 - Nếu nhiều học sinh có cùng mức đánh giá, vẫn phải viết khác nhau.
 - Sau khi viết xong toàn bộ, phải tự kiểm tra:
   + Nếu có 2 câu giống hoặc gần giống nhau → viết lại cho khác.
-
-BẮT BUỘC PHẢI THEO
-- Mức T:
-  + Khen ngợi điểm nổi bậc.
-  + bắt buộc không cần nêu hướng phát huy/khắc phục.
-- Mức H/Đ:
-  + Khen điểm đã làm được.
-  + Đưa ra hướng phát huy
-- Mức C:
-  + Khen nhẹ 1 điểm (ví dụ: có cố gắng).
-  + Nêu hạn chế cụ thể (không nói chung chung).
-  + Đưa ra hướng cải thiện rõ ràng, dễ thực hiện.
+  + Đảm bảo không có từ nước ngoài.
+  + Đảm bảo đúng chính tả tiếng Việt.
+  + Nếu có lỗi, hãy tự sửa trước khi trả kết quả.
+- Không được dùng lại các mẫu như:
+  "Em chăm chỉ và có cố gắng"
+  "Em học tốt và cần phát huy"
 
 ĐỊNH DẠNG TRẢ VỀ:
 Trả về JSON dạng:
@@ -759,73 +770,59 @@ Danh sách học sinh:
 ${JSON.stringify(studentContexts)}
 
 Hãy viết nhận xét cho từng học sinh theo đúng ID và trả về đúng ${studentContexts.length} nhận xét.`;
+
               
-              async function callAI(userInstruction) {
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userInstruction }
-        ],
-        temperature: 0.9,
-        top_p: 0.9
-      })
-    });
+              try {
+                const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`
+  },
+  body: JSON.stringify({
+    model: "openai/gpt-oss-120b",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userInstruction }
+    ],
+    temperature: 0.7
+  })
+});
 
-    const result = await res.json();
+const result = await res.json();
 
-    if (result.error) {
-      console.error("API error:", result.error.message);
-      showToast("Lỗi API: " + result.error.message, "error", "❌", 4000);
-      return null; // ❌ bỏ break → dùng return
-    }
-
-    let jsonText = result.choices?.[0]?.message?.content;
-
-    if (jsonText) {
-      let cleanText = jsonText.trim();
-
-      if (cleanText.startsWith("```")) {
-        cleanText = cleanText.replace(/```json|```/g, "").trim();
-      }
-
-      const results = JSON.parse(cleanText);
-
-      // 👉 delay đặt ở đây
-      const delay = (ms) => new Promise(res => setTimeout(res, ms));
-
-      for (const sId of Object.keys(results)) {
-        const comment = results[sId];
-
-        setDraftData(prev => ({
-          ...prev,
-          [sId]: {
-            ...(prev[sId] || {}),
-            comment: comment
-          }
-        }));
-
-        await delay(500); // 👉 nghỉ giữa từng học sinh
-      }
-
-      return results;
-    }
-
-    return null;
-
-  } catch (err) {
-    console.error("Lỗi:", err);
-    return null;
-  }
+if (result.error) {
+  console.error("API error:", result.error.message);
+  showToast("Lỗi API: " + result.error.message, "error", "❌", 4000);
+  break;
 }
 
+let jsonText = result.choices?.[0]?.message?.content;
+
+                if (jsonText) {
+  let cleanText = jsonText.trim();
+
+  if (cleanText.startsWith("```")) {
+    cleanText = cleanText.replace(/```json|```/g, "").trim();
+  }
+
+  const results = JSON.parse(cleanText);
+
+                  const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+for (const sId of Object.keys(results)) {
+  const comment = results[sId];
+
+  setDraftData(prev => ({
+    ...prev,
+    [sId]: {
+      ...(prev[sId] || {}),
+      comment: comment
+    }
+  }));
+
+  await delay(1000); // 👈 chỉnh tốc độ ở đây
+}
 
                   successCount += Object.keys(results).length;
                 }
