@@ -715,18 +715,6 @@ NỘI DUNG NHẬN XÉT:
 - Nhận xét phải dựa sát vào dữ liệu (mức đánh giá).
 - Viết tự nhiên như lời nói, không máy móc.
 
-QUY TẮC THEO MỨC:
-- Mức T (Tốt):
-  + Khen ngợi điểm nổi bậc.
-  + Không cần nêu hướng phát huy/khắc phục.
-- Mức Đ / H (Đạt / Hoàn thành):
-  + Khen điểm đã làm được.
-  + Đưa ra hướng phát huy
-- Mức C (Chưa đạt):
-  + Khen nhẹ 1 điểm (ví dụ: có cố gắng).
-  + Nêu hạn chế cụ thể (không nói chung chung).
-  + Đưa ra hướng cải thiện rõ ràng, dễ thực hiện.
-
 PHONG CÁCH:
 - Câu nhận xét ngắn gọn, đủ ý.
 - Tránh lặp từ giữa các học sinh.
@@ -745,6 +733,18 @@ QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
 - Không được dùng lại các mẫu như:
   "Em chăm chỉ và có cố gắng"
   "Em học tốt và cần phát huy"
+  
+  QUY TẮC THEO MỨC:
+- Mức T (Tốt):
+  + Khen ngợi điểm nổi bậc.
+  + Không cần nêu hướng phát huy/khắc phục.
+- Mức Đ / H (Đạt / Hoàn thành):
+  + Khen điểm đã làm được.
+  + Đưa ra hướng phát huy
+- Mức C (Chưa đạt):
+  + Khen nhẹ 1 điểm (ví dụ: có cố gắng).
+  + Nêu hạn chế cụ thể (không nói chung chung).
+  + Đưa ra hướng cải thiện rõ ràng, dễ thực hiện.
 
 ĐỊNH DẠNG TRẢ VỀ:
 Trả về JSON dạng:
