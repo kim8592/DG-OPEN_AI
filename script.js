@@ -711,11 +711,6 @@ QUY TẮC CHUNG:
 - Tuyệt đối không ghi lại mức đạt (T, H/Đ, C).
 - Tuyệt đối không chèn từ tiếng Anh, tiếng nước ngoài vào câu nhận xét.
 
-PHONG CÁCH:
-- Câu nhận xét ngắn gọn, đủ ý.
-- Tránh lặp từ giữa các học sinh.
-- Giống nhận xét viết tay của giáo viên.
-
 QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
 - Mỗi nhận xét phải KHÁC NHAU hoàn toàn về cách diễn đạt.
 - Không được sử dụng lại cùng một cấu trúc câu cho nhiều học sinh.
@@ -726,11 +721,11 @@ QUY ĐỊNH CHỐNG TRÙNG LẶP (BẮT BUỘC):
 - Nếu nhiều học sinh có cùng mức đánh giá, vẫn phải viết khác nhau.
 - Sau khi viết xong toàn bộ, phải tự kiểm tra:
   + Nếu có 2 câu giống hoặc gần giống nhau → viết lại cho khác.
-  
-  QUY TẮC THEO MỨC (bắt buộc):
+
+BẮT BUỘC PHẢI THEO
 - Mức T:
   + Khen ngợi điểm nổi bậc.
-  + Không cần nêu hướng phát huy/khắc phục.
+  + bắt buộc không cần nêu hướng phát huy/khắc phục.
 - Mức H/Đ:
   + Khen điểm đã làm được.
   + Đưa ra hướng phát huy
