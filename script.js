@@ -588,35 +588,39 @@ const batch = db.batch();
 
 
               for (const sId of studentIds) {
-                const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').doc(key)
-                  .collection('entries').doc(sId);
-                const updates = draftData[sId];
-                batch.set(docRef, {
-  ...updates,
-  owner: user.uid,
-  ownerName: user.displayName || user.email
-}, { merge: true });
+  const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').doc(key)
+    .collection('entries').doc(sId);
+  const updates = draftData[sId];
+  batch.set(docRef, {
+    ...updates,
+    owner: user.uid,
+    ownerName: user.displayName || user.email,
+    lastModified: new Date().toISOString() // ✅ Thêm dòng này
+  }, { merge: true });
 
-                if (viewMode === 'subject' && updates.level !== undefined) {
-                  const subjectName = subjects.find(s => s.id === selectedSubId)?.name;
-                  const targetCompId = SUBJECT_TO_COMPETENCY_MAP[subjectName];
-                  if (targetCompId) {
-                    let compKey = "";
-                    let compField = "level";
-                    let compLevelValue = updates.level === 'H' ? 'Đ' : updates.level;
-                    if (systemMode === 'smas') {
-                      compKey = `${selectedYearId}_specific_${selectedMonthId}_${selectedClassId}`;
-                      compField = `level_${targetCompId}`;
-                    } else {
-                      compKey = `${selectedYearId}_specific_vnedu_${targetCompId}_${selectedMonthId}_${selectedClassId}`;
-                      compField = "level";
-                    }
-                    const compDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').doc(compKey)
-                      .collection('entries').doc(sId);
-                    batch.set(compDocRef, { [compField]: compLevelValue }, { merge: true });
-                  }
-                }
-              }
+  if (viewMode === 'subject' && updates.level !== undefined) {
+    const subjectName = subjects.find(s => s.id === selectedSubId)?.name;
+    const targetCompId = SUBJECT_TO_COMPETENCY_MAP[subjectName];
+    if (targetCompId) {
+      let compKey = "";
+      let compField = "level";
+      let compLevelValue = updates.level === 'H' ? 'Đ' : updates.level;
+      if (systemMode === 'smas') {
+        compKey = `${selectedYearId}_specific_${selectedMonthId}_${selectedClassId}`;
+        compField = `level_${targetCompId}`;
+      } else {
+        compKey = `${selectedYearId}_specific_vnedu_${targetCompId}_${selectedMonthId}_${selectedClassId}`;
+        compField = "level";
+      }
+      const compDocRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('comments').doc(compKey)
+        .collection('entries').doc(sId);
+      batch.set(compDocRef, { 
+        [compField]: compLevelValue,
+        lastModified: new Date().toISOString() // ✅ Thêm dòng này
+      }, { merge: true });
+    }
+  }
+}
               await batch.commit();
               setDraftData({});
               showToast(`Đã lưu ${studentIds.length} học sinh thành công`, 'success', '✅', 3000);
@@ -1360,17 +1364,23 @@ style={{padding:"8px 12px",cursor:"pointer",color:"red"}}
                                     <span className="text-xs font-bold">{idx + 1}</span>
                                   </td>
                                   <td className="p-3 border-r border-slate-400 text-left sticky left-20 bg-inherit z-10">
-                                    <button onClick={() => setStatusModalStudent(stu)} className="flex flex-col items-start w-full text-left group/name">
-                                      <span className={`font-black text-sm uppercase transition-all ${isInactive ? 'text-slate-400 line-through' : 'text-slate-800 group-hover/name:text-indigo-600'}`}>
-                                        {stu.name}
-                                      </span>
-                                      {isInactive && (
-                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded mt-1 ${statusConfig.bg} ${statusConfig.color}`}>
-                                          {statusConfig.label}
-                                        </span>
-                                      )}
-                                    </button>
-                                  </td>
+  <button onClick={() => setStatusModalStudent(stu)} className="flex flex-col items-start w-full text-left group/name relative">
+    {/* ✅ TOOLTIP */}
+    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-slate-900 text-white text-[11px] rounded-lg whitespace-nowrap z-50 opacity-0 group-hover/name:opacity-100 transition-opacity pointer-events-none font-bold shadow-lg">
+      📅 Tích: {d.lastModified ? new Date(d.lastModified).toLocaleString('vi-VN') : 'Chưa tích'}
+      <div className="absolute top-full left-3 w-2 h-2 bg-slate-900 transform rotate-45"></div>
+    </div>
+    
+    <span className={`font-black text-sm uppercase transition-all ${isInactive ? 'text-slate-400 line-through' : 'text-slate-800 group-hover/name:text-indigo-600'}`}>
+      {stu.name}
+    </span>
+    {isInactive && (
+      <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded mt-1 ${statusConfig.bg} ${statusConfig.color}`}>
+        {statusConfig.label}
+      </span>
+    )}
+  </button>
+</td>
                                   {(systemMode === 'smas' && viewMode !== 'subject') ? (
                                     showLevel && (viewMode === 'quality' ? QUALITY_CRITERIA : (viewMode === 'competency' ? GENERAL_COMPETENCIES : SPECIFIC_COMPETENCIES)).map(c => {
                                       const lvVal = draft[`level_${c.id}`] !== undefined ? draft[`level_${c.id}`] : (d[`level_${c.id}`] || "");
