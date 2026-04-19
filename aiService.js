@@ -53,7 +53,7 @@ const COMMENT_TEMPLATES = {
     'Em biểu hiện năng lực với {keyword} ở mức cơ bản, cần rèn luyện thêm.',
     'Em đạt được {keyword}, nhưng còn có những điểm cần cải thiện.',
     'Em làm được {keyword} nhưng chưa thực sự thành thạo. Luyện thêm sẽ tốt hơn.',
-    'Em th�� hiện được khả năng {keyword} ở mức khiêm tốn. Hãy tiếp tục nỗ lực.',
+    'Em thể hiện được khả năng {keyword} ở mức khiêm tốn. Hãy tiếp tục nỗ lực.',
     'Em hoàn thành được yêu cầu {keyword}. Hãy rèn luyện thêm để phát triển.'
   ],
   'C': [
@@ -299,13 +299,13 @@ RULE QUAN TRỌNG:
 - MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp
 - Nếu câu gốc sai chính tả, thiếu chữ, hoặc chưa rõ nghĩa → PHẢI tự hiểu và viết lại thành câu hoàn chỉnh, rõ nghĩa.
 - KHÔNG giữ nguyên câu sai.
-- PHẢI có 10-15 từ
+- PHẢI có 15-17 từ
 - Bắt đầu "Em"
 - Nếu có "(Ghi chú: ...)" thì TÍCH HỢP tự nhiên vào nhận xét, VÍ DỤ thay vì nói "nhẩm nhanh" ở cuối, hãy viết "với khả năng nhẩm nhanh rất tốt"
 - XÓA tất cả dấu ngoặc []
 - KHÔNG để "(Ghi chú: ...)" trong kết quả final
 - Không để response rỗng
-- OUTPUT MỖI EM 1 DÒNG: [ID]|||[Nhận xét 10-15 từ]`
+- OUTPUT MỖI EM 1 DÒNG: [ID]|||[Nhận xét 15-17 từ]`
       : `Sửa lại các nhận xét tiểu học cho hay hơn, tự nhiên hơn.
 RULE QUAN TRỌNG:
 - MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp
