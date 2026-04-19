@@ -361,13 +361,13 @@ QUAN TRỌNG: Đảm bảo từ khóa được ráp vào câu một cách tự n
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({ 
-            model: 'llama-3.3-70b-versatile',
+            model="llama-3.3-70b-versatile",
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userInstruction }
             ],
             temperature: 0.7,
-            max_tokens: 99000,
+            max_tokens: 9000,
             top_p: 0.9,
             frequency_penalty: 0.5
           })
