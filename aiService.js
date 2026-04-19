@@ -296,7 +296,8 @@ HƯỚNG DẪN THEO MỨC:
   MỨC H/Đ: Khen điểm nổi bật và nêu hướng phát huy.
   MỨC C: Khen cố gắng, nêu hạn chế, nêu hướng khắc phục.
 RULE QUAN TRỌNG: 
-- MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp
+- MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp.
+- Hãy sửa lại câu cho đúng cấu trúc ngữ pháp.
 - Nếu câu gốc sai chính tả, thiếu chữ, hoặc chưa rõ nghĩa → PHẢI tự hiểu và viết lại thành câu hoàn chỉnh, rõ nghĩa.
 - KHÔNG giữ nguyên câu sai.
 - PHẢI có 15-17 từ
@@ -308,7 +309,8 @@ RULE QUAN TRỌNG:
 - OUTPUT MỖI EM 1 DÒNG: [ID]|||[Nhận xét 15-17 từ]`
       : `Sửa lại các nhận xét tiểu học cho hay hơn, tự nhiên hơn.
 RULE QUAN TRỌNG:
-- MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp
+- MỖI nhận xét PHẢI khác nhau hoàn toàn, không lặp.
+- Hãy sửa lại câu cho đúng cấu trúc ngữ pháp.
 - Nếu câu gốc sai chính tả, thiếu chữ, hoặc chưa rõ nghĩa → PHẢI tự hiểu và viết lại thành câu hoàn chỉnh, rõ nghĩa.
 - KHÔNG giữ nguyên câu sai.
 - Giữ nguyên ý chính, mức đánh giá
