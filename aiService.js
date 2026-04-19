@@ -387,7 +387,7 @@ QUAN TRỌNG: Đảm bảo từ khóa được ráp vào câu một cách tự n
           console.warn(`⚠️ Response không hợp lệ, retry...`);
           retryCount++;
           if (retryCount < maxRetries) {
-            await delay(1000);
+            await delay(2000);
           }
         }
 
