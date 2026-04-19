@@ -361,7 +361,7 @@ QUAN TRỌNG: Đảm bảo từ khóa được ráp vào câu một cách tự n
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({ 
-            model: 'groq/compound-mini',
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userInstruction }
