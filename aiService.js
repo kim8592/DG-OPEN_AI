@@ -367,7 +367,7 @@ QUAN TRỌNG: Đảm bảo từ khóa được ráp vào câu một cách tự n
               { role: 'user', content: userInstruction }
             ],
             temperature: 0.7,
-            max_tokens: 4000,
+            max_tokens: 99000,
             top_p: 0.9,
             frequency_penalty: 0.5
           })
