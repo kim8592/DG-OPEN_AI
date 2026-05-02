@@ -64,23 +64,27 @@ YÊU CẦU NGẪU NHIÊN:
 - Nếu giáo viên đưa danh sách nhiều ý tưởng, hãy chọn ngẫu nhiên các ý khác nhau cho mỗi học sinh.
 - Biến tấu câu chữ linh hoạt, không để các học sinh cùng mức có câu nhận xét giống hệt nhau.`,
 
-  user: (studentList, aiPrompt) => {
-    const promptContent = aiPrompt && aiPrompt.trim() !== "" 
-      ? `KHO NỘI DUNG Ý TƯỞNG CỦA GIÁO VIÊN (Sử dụng ngẫu nhiên các ý này):\n"""\n${aiPrompt}\n"""` 
+ user: (studentList, aiPrompt) => {
+    // 1. Nhận diện nội dung chuyên môn của giáo viên
+    const teacherInput = aiPrompt && aiPrompt.trim() !== "" 
+      ? `NỘI DUNG CHUYÊN MÔN CỦA GIÁO VIÊN:\n"""\n${aiPrompt}\n"""` 
       : "Giáo viên không cung cấp nội dung mẫu, hãy tự khởi tạo nhận xét theo chuẩn sư phạm.";
 
     return `
-${promptContent}
+${teacherInput}
 
-DANH SÁCH HỌC SINH CẦN XỬ LÝ:
+DANH SÁCH HỌC SINH:
 ${studentList}
 
-YÊU CẦU XỬ LÝ:
-1. Dựa trên mức độ (T/H/Đ/C) đã ghi trong danh sách để áp dụng đúng quy tắc phân loại.
-2. Với mức H/Đ: Dù ý tưởng của giáo viên chỉ có nội dung nhắc nhở, bạn PHẢI tự thêm 1 lời khen tích cực vào đầu câu để khích lệ.
-3. Chỉ xuất ra kết quả theo định dạng [StudentName]|||[Comment], không thêm bất kỳ lời dẫn nào khác.`;
+YÊU CẦU XỬ LÝ (QUAN TRỌNG):
+1. TUYỆT ĐỐI KHÔNG khen chung chung như "ngoan", "tích cực", "chuyên cần" nếu giáo viên đã có "NỘI DUNG CHUYÊN MÔN".
+2. Với mức H/Đ: Hãy dựa vào "NỘI DUNG CHUYÊN MÔN" để viết vế khen đầu câu. 
+   - Ví dụ: Nếu nội dung là "giải toán cộng trừ chưa nhanh", hãy khen: "Em đã biết cách thực hiện phép tính cộng, trừ..." sau đó mới nối vế nhắc nhở "...tuy nhiên em cần rèn luyện thêm để tính toán nhanh hơn."
+3. Với mức T: Chuyển toàn bộ nội dung giáo viên đưa ra thành lời khen hoàn hảo.
+4. Với mức C: Góp ý nhẹ nhàng và nêu hướng khắc phục đúng nội dung giáo viên yêu cầu.
+
+Trả về duy nhất định dạng: [StudentName]|||[Comment]`;
   }
-};
 
 // ============================================
 // UTILITY FUNCTIONS (Tối ưu - Gộp logic trùng lặp)
