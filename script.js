@@ -65,25 +65,22 @@ YÊU CẦU NGẪU NHIÊN:
 - Biến tấu câu chữ linh hoạt, không để các học sinh cùng mức có câu nhận xét giống hệt nhau.`,
 
  user: (studentList, aiPrompt) => {
-    const promptContent = aiPrompt && aiPrompt.trim() !== "" 
-      ? `DANH SÁCH CÁC Ý TƯỞNG CỦA GIÁO VIÊN (Cung cấp nhiều lựa chọn):\n"""\n${aiPrompt}\n"""` 
-      : "Giáo viên không cung cấp mẫu, hãy tự viết dựa trên mức đạt.";
+    const generalPrompt = aiPrompt && aiPrompt.trim() !== "" 
+      ? `NỘI DUNG CHUNG (Chỉ dùng khi học sinh không có ghi chú riêng):\n"""\n${aiPrompt}\n"""` 
+      : "";
 
     return `
-${promptContent}
+${generalPrompt}
 
-DANH SÁCH HỌC SINH:
+DANH SÁCH HỌC SINH (Ghi chú riêng nằm sau dấu |):
 ${studentList}
 
-YÊU CẦU XỬ LÝ (QUAN TRỌNG):
-1. CHỌN NGẪU NHIÊN: Với mỗi học sinh, chỉ chọn DUY NHẤT 1 ý tưởng từ danh sách của giáo viên ở trên để viết. Không kết hợp tất cả các ý vào một em.
-2. KHÔNG khen chung chung ("ngoan", "tích cực"). Hãy dựa vào ý tưởng đã chọn để viết vế khen đầu câu.
-3. CẤU TRÚC MỨC H/Đ: 
-   - [Vế khen]: Nói rằng em đã nắm được/biết cách thực hiện nội dung đó.
-   - [Vế nhắc]: Dùng "cần/nên" để góp ý đúng nội dung đó cho hoàn thiện hơn.
-4. ĐẢM BẢO ĐA DẠNG: Các học sinh khác nhau phải được gán các ý tưởng ngẫu nhiên khác nhau từ danh sách (không trùng lặp nếu kho ý tưởng đủ nhiều).
+QUY TẮC ƯU TIÊN XỬ LÝ:
+1. ƯU TIÊN SỐ 1: Nếu học sinh có "Ghi chú" riêng trong danh sách, bạn PHẢI viết nhận xét dựa trên ghi chú đó.
+2. ƯU TIÊN SỐ 2: Nếu học sinh KHÔNG có ghi chú riêng, hãy chọn NGẪU NHIÊN một ý từ "NỘI DUNG CHUNG" phía trên.
+3. CẤU TRÚC (Mức H/Đ): Dựa vào nội dung (từ Ghi chú hoặc Nội dung chung), hãy khen em "đã nắm được/biết cách..." trước, sau đó mới góp ý "cần/nên..." để hoàn thiện chính nội dung đó.
 
-Trả về định dạng: [StudentName]|||[Comment]`;
+TRẢ VỀ ĐÚNG FORMAT: [StudentName]|||[Comment]`;
   }
 };
 // ============================================
