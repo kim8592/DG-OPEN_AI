@@ -65,25 +65,25 @@ YÊU CẦU NGẪU NHIÊN:
 - Biến tấu câu chữ linh hoạt, không để các học sinh cùng mức có câu nhận xét giống hệt nhau.`,
 
  user: (studentList, aiPrompt) => {
-    // 1. Nhận diện nội dung chuyên môn của giáo viên
-    const teacherInput = aiPrompt && aiPrompt.trim() !== "" 
-      ? `NỘI DUNG CHUYÊN MÔN CỦA GIÁO VIÊN:\n"""\n${aiPrompt}\n"""` 
-      : "Giáo viên không cung cấp nội dung mẫu, hãy tự khởi tạo nhận xét theo chuẩn sư phạm.";
+    const promptContent = aiPrompt && aiPrompt.trim() !== "" 
+      ? `DANH SÁCH CÁC Ý TƯỞNG CỦA GIÁO VIÊN (Cung cấp nhiều lựa chọn):\n"""\n${aiPrompt}\n"""` 
+      : "Giáo viên không cung cấp mẫu, hãy tự viết dựa trên mức đạt.";
 
     return `
-${teacherInput}
+${promptContent}
 
 DANH SÁCH HỌC SINH:
 ${studentList}
 
 YÊU CẦU XỬ LÝ (QUAN TRỌNG):
-1. TUYỆT ĐỐI KHÔNG khen chung chung như "ngoan", "tích cực", "chuyên cần" nếu giáo viên đã có "NỘI DUNG CHUYÊN MÔN".
-2. Với mức H/Đ: Hãy dựa vào "NỘI DUNG CHUYÊN MÔN" để viết vế khen đầu câu. 
-   - Ví dụ: Nếu nội dung là "giải toán cộng trừ chưa nhanh", hãy khen: "Em đã biết cách thực hiện phép tính cộng, trừ..." sau đó mới nối vế nhắc nhở "...tuy nhiên em cần rèn luyện thêm để tính toán nhanh hơn."
-3. Với mức T: Chuyển toàn bộ nội dung giáo viên đưa ra thành lời khen hoàn hảo.
-4. Với mức C: Góp ý nhẹ nhàng và nêu hướng khắc phục đúng nội dung giáo viên yêu cầu.
+1. CHỌN NGẪU NHIÊN: Với mỗi học sinh, chỉ chọn DUY NHẤT 1 ý tưởng từ danh sách của giáo viên ở trên để viết. Không kết hợp tất cả các ý vào một em.
+2. KHÔNG khen chung chung ("ngoan", "tích cực"). Hãy dựa vào ý tưởng đã chọn để viết vế khen đầu câu.
+3. CẤU TRÚC MỨC H/Đ: 
+   - [Vế khen]: Nói rằng em đã nắm được/biết cách thực hiện nội dung đó.
+   - [Vế nhắc]: Dùng "cần/nên" để góp ý đúng nội dung đó cho hoàn thiện hơn.
+4. ĐẢM BẢO ĐA DẠNG: Các học sinh khác nhau phải được gán các ý tưởng ngẫu nhiên khác nhau từ danh sách (không trùng lặp nếu kho ý tưởng đủ nhiều).
 
-Trả về duy nhất định dạng: [StudentName]|||[Comment]`;
+Trả về định dạng: [StudentName]|||[Comment]`;
   }
 };
 // ============================================
